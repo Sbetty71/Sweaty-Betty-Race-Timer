@@ -444,6 +444,10 @@ const firebaseConfig = {
          */
         async function startNewRace() {
             vibrate();
+            // This is the bug fix. We now check if the race is already started before proceeding.
+            if (isRaceStarted) {
+                return;
+            }
             startButton.disabled = true;
             startButton.classList.remove('btn-primary');
             startButton.classList.add('bg-gray-400', 'cursor-not-allowed');
@@ -483,10 +487,12 @@ const firebaseConfig = {
                 joinStatus.textContent = error.message; // Display the error message
             } finally {
                 // Always re-enable the button regardless of success or failure
-                startButton.disabled = false;
-                startButton.classList.add('btn-primary');
-                startButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-                startButton.textContent = 'Ready to Go!';
+                if (!isRaceStarted) {
+                    startButton.disabled = false;
+                    startButton.classList.add('btn-primary');
+                    startButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    startButton.textContent = 'Ready to Go!';
+                }
             }
         }
 
@@ -556,7 +562,7 @@ const firebaseConfig = {
             });
 
             // Handlers for hold-to-stop
-            stopButton.addEventListener('mousedown', () => {
+            const handleStopHoldStart = () => {
                 vibrate();
                 if (isRaceStarted && !isHoldingStop) {
                     isHoldingStop = true;
@@ -580,10 +586,15 @@ const firebaseConfig = {
                         clearInterval(countdownIntervalId);
                     }, holdDuration);
                 }
+            };
+            stopButton.addEventListener('mousedown', handleStopHoldStart);
+            stopButton.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevents touch events from triggering mouse events
+                handleStopHoldStart();
             });
 
             // Handlers for hold-to-reset
-            resetButton.addEventListener('mousedown', () => {
+            const handleResetHoldStart = () => {
                 vibrate();
                 if (!isHoldingReset && !isRaceStarted) {
                     isHoldingReset = true;
@@ -608,8 +619,12 @@ const firebaseConfig = {
                         location.reload();
                     }, holdDuration);
                 }
+            };
+            resetButton.addEventListener('mousedown', handleResetHoldStart);
+            resetButton.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevents touch events from triggering mouse events
+                handleResetHoldStart();
             });
-
 
             // Common event listeners for canceling hold
             const cancelHold = (isTargetStop, isTargetReset) => {
@@ -636,10 +651,12 @@ const firebaseConfig = {
 
             stopButton.addEventListener('mouseup', () => cancelHold(true, false));
             stopButton.addEventListener('mouseleave', () => cancelHold(true, false));
+            stopButton.addEventListener('touchend', () => cancelHold(true, false));
+            stopButton.addEventListener('touchcancel', () => cancelHold(true, false));
             resetButton.addEventListener('mouseup', () => cancelHold(false, true));
             resetButton.addEventListener('mouseleave', () => cancelHold(false, true));
-            document.addEventListener('touchend', () => cancelHold(true, true));
-            document.addEventListener('touchcancel', () => cancelHold(true, true));
+            resetButton.addEventListener('touchend', () => cancelHold(false, true));
+            resetButton.addEventListener('touchcancel', () => cancelHold(false, true));
         }
 
         // --- Firebase/Offline Mode Configuration ---
@@ -660,6 +677,9 @@ const firebaseConfig = {
 
             startButton.addEventListener('click', () => {
                 vibrate();
+                if (isRaceStarted) {
+                    return; // Prevent accidental clear
+                }
                 startTimerLogic();
                 renderFinishers([]);
             });
