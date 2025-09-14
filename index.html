@@ -79,8 +79,13 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
         }
-        .btn-stop.holding {
+        .btn-stop.holding, .btn-reset.holding {
             background-color: #e65100; /* Darker orange while holding */
+        }
+        #recordButton {
+            width: 100%;
+            font-size: 2rem;
+            padding: 40px;
         }
         /* Timer display styling */
         #timer-display {
@@ -157,6 +162,18 @@
         .input-group input:focus {
             border-color: #4CAF50;
         }
+
+        /* Keyframe animation for the flash effect */
+        @keyframes flashEffect {
+            0% { background-color: #008CBA; }
+            50% { background-color: #4CAF50; } /* Flash to a different color */
+            100% { background-color: #008CBA; }
+        }
+
+        /* Class to apply the flash effect */
+        .btn-secondary.flash {
+            animation: flashEffect 0.5s ease-in-out;
+        }
     </style>
 </head>
 <body>
@@ -222,7 +239,7 @@ const firebaseConfig = {
   messagingSenderId: "452422143632",
   appId: "1:452422143632:web:6fd748202fa20f8056d215",
   measurementId: "G-GND0EZY2R3"
-};     
+};    
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Get references to DOM elements
@@ -250,12 +267,22 @@ const firebaseConfig = {
         const holdDuration = 3000;
         let countdownSeconds = 0;
         let isHoldingStop = false;
+        let isHoldingReset = false;
 
         let db;
         let auth;
         let raceFinishersCollectionRef; // This will be dynamic
         let unsubscribeFromFirestore = null; // To store the unsubscribe function
         let currentRaceId = null; // To track the ID of the active race
+
+        /**
+         * Triggers a short vibration if the browser supports it.
+         */
+        function vibrate() {
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50); // Vibrate for 50ms
+            }
+        }
 
         /**
          * Generates a random, short ID for a race.
@@ -416,6 +443,7 @@ const firebaseConfig = {
          * Starts a new race by creating a session document in Firestore.
          */
         async function startNewRace() {
+            vibrate();
             startButton.disabled = true;
             startButton.classList.remove('btn-primary');
             startButton.classList.add('bg-gray-400', 'cursor-not-allowed');
@@ -470,6 +498,7 @@ const firebaseConfig = {
             startButton.addEventListener('click', startNewRace);
 
             recordButton.addEventListener('click', async () => {
+                vibrate();
                 if (isRaceStarted) {
                     finisherCount++;
                     const finishTime = Date.now() - startTime;
@@ -480,6 +509,12 @@ const firebaseConfig = {
                             finishTime: finishTime,
                             timestamp: Date.now()
                         });
+
+                        // Add the flash effect class and remove it after the animation duration
+                        recordButton.classList.add('flash');
+                        setTimeout(() => {
+                            recordButton.classList.remove('flash');
+                        }, 500); // 0.5 seconds
                     } catch (error) {
                         console.error("Error adding document: ", error);
                         finisherCount--;
@@ -489,6 +524,7 @@ const firebaseConfig = {
 
             // Join Race button logic
             joinButton.addEventListener('click', async () => {
+                vibrate();
                 const enteredId = raceIdInput.value.trim().toLowerCase();
                 if (enteredId.length === 6) {
                     joinStatus.textContent = 'Searching for race...';
@@ -521,6 +557,7 @@ const firebaseConfig = {
 
             // Handlers for hold-to-stop
             stopButton.addEventListener('mousedown', () => {
+                vibrate();
                 if (isRaceStarted && !isHoldingStop) {
                     isHoldingStop = true;
                     stopButton.classList.add('holding');
@@ -531,7 +568,7 @@ const firebaseConfig = {
                         if (countdownSeconds > 0) {
                             stopButton.textContent = `Hold to Stop (${countdownSeconds})`;
                         } else {
-                            stopButton.textContent = 'Releasing...';
+                            stopButton.textContent = 'Stopping...';
                             clearInterval(countdownIntervalId);
                         }
                     }, 1000);
@@ -545,14 +582,39 @@ const firebaseConfig = {
                 }
             });
 
-            // The Reset button now simply refreshes the page
-            resetButton.addEventListener('click', () => {
-                location.reload();
+            // Handlers for hold-to-reset
+            resetButton.addEventListener('mousedown', () => {
+                vibrate();
+                if (!isHoldingReset && !isRaceStarted) {
+                    isHoldingReset = true;
+                    resetButton.classList.add('holding');
+                    countdownSeconds = holdDuration / 1000;
+                    resetButton.textContent = `Hold to Reset (${countdownSeconds})`;
+                    countdownIntervalId = setInterval(() => {
+                        countdownSeconds--;
+                        if (countdownSeconds > 0) {
+                            resetButton.textContent = `Hold to Reset (${countdownSeconds})`;
+                        } else {
+                            resetButton.textContent = 'Resetting...';
+                            clearInterval(countdownIntervalId);
+                        }
+                    }, 1000);
+                    holdTimerId = setTimeout(async () => {
+                        await clearAllFinishers();
+                        isHoldingReset = false;
+                        holdTimerId = null;
+                        resetButton.textContent = 'Reset';
+                        clearInterval(countdownIntervalId);
+                        location.reload();
+                    }, holdDuration);
+                }
             });
 
+
             // Common event listeners for canceling hold
-            const cancelHold = (isTargetStop) => {
+            const cancelHold = (isTargetStop, isTargetReset) => {
                 if (isTargetStop) isHoldingStop = false;
+                if (isTargetReset) isHoldingReset = false;
                 
                 if (holdTimerId) {
                     clearTimeout(holdTimerId);
@@ -566,12 +628,18 @@ const firebaseConfig = {
                     stopButton.textContent = 'Stop Race';
                     stopButton.classList.remove('holding');
                 }
+                if (!isRaceStarted) {
+                    resetButton.textContent = 'Reset';
+                    resetButton.classList.remove('holding');
+                }
             };
 
-            stopButton.addEventListener('mouseup', () => cancelHold(true));
-            stopButton.addEventListener('mouseleave', () => cancelHold(true));
-            document.addEventListener('touchend', () => cancelHold(true));
-            document.addEventListener('touchcancel', () => cancelHold(true));
+            stopButton.addEventListener('mouseup', () => cancelHold(true, false));
+            stopButton.addEventListener('mouseleave', () => cancelHold(true, false));
+            resetButton.addEventListener('mouseup', () => cancelHold(false, true));
+            resetButton.addEventListener('mouseleave', () => cancelHold(false, true));
+            document.addEventListener('touchend', () => cancelHold(true, true));
+            document.addEventListener('touchcancel', () => cancelHold(true, true));
         }
 
         // --- Firebase/Offline Mode Configuration ---
@@ -586,19 +654,28 @@ const firebaseConfig = {
             startButton.textContent = 'Start New Race';
             joinButton.disabled = true; // Joining is not possible offline
             resetButton.addEventListener('click', () => {
+                vibrate();
                 location.reload();
             });
 
             startButton.addEventListener('click', () => {
+                vibrate();
                 startTimerLogic();
                 renderFinishers([]);
             });
 
             recordButton.addEventListener('click', () => {
+                vibrate();
                 if (isRaceStarted) {
                     finisherCount++;
                     const finishTime = Date.now() - startTime;
                     renderFinishers([{ finisherNumber: finisherCount, finishTime: finishTime }]);
+
+                    // Add flash effect for offline mode
+                    recordButton.classList.add('flash');
+                    setTimeout(() => {
+                        recordButton.classList.remove('flash');
+                    }, 500);
                 }
             });
         } else {
