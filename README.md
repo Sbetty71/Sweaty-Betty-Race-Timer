@@ -1,2 +1,2 @@
 # Sweaty-Betty-Race-Timer
-Simple race timer to be used with popsicles upon race completion.
+Timing app to record finishers upon race completion.  Can be shared with a remote user for determining age or sex awards.
