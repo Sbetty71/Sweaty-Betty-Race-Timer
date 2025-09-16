@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweaty Betty Race Timer</title>
+    <title>OreanaRuns Race Timer</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -175,10 +175,16 @@
             animation: flashEffect 0.5s ease-in-out;
         }
     </style>
+    <!--
+        Race Timer App
+        Author: [Your Name Here]
+        Build Date: [Current Date]
+        Version: 1.0
+    -->
 </head>
 <body>
     <div id="app-container">
-        <h1 class="text-4xl font-bold text-gray-800 mb-6">Sweaty Betty Race Timer</h1>
+        <h1 class="text-4xl font-bold text-gray-800 mb-6">OreanaRuns Race Timer</h1>
 
         <div id="timer-display">00:00:00</div>
 
@@ -221,6 +227,14 @@
             </table>
         </div>
     </div>
+    
+    <div class="fixed bottom-4 left-4 text-xs text-gray-400 text-left">
+        <p>Built by Sean Betty.</p>
+        <p>Version 1.0. Last updated 9.16.25.</p>
+        <p>For feedback or support, please email 
+            <a href="mailto:sbetty71@gmail.com" class="underline text-blue-400 hover:text-blue-500">sbetty71@gmail.com</a>.
+        </p>
+    </div>
 
     <!-- Firebase SDKs -->
     <script type="module">
@@ -239,7 +253,7 @@ const firebaseConfig = {
   messagingSenderId: "452422143632",
   appId: "1:452422143632:web:6fd748202fa20f8056d215",
   measurementId: "G-GND0EZY2R3"
-};    
+};  
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Get references to DOM elements
