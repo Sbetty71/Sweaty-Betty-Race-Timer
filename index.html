@@ -230,7 +230,7 @@
     
     <div class="fixed bottom-4 left-4 text-xs text-gray-400 text-left">
         <p>Built by Sean Betty.</p>
-        <p>Version 1.0. Last updated 9.16.25.</p>
+        <p>Version 1.1. Last updated 11.23.25.</p>
         <p>For feedback or support, please email 
             <a href="mailto:sbetty71@gmail.com" class="underline text-blue-400 hover:text-blue-500">sbetty71@gmail.com</a>.
         </p>
@@ -299,13 +299,15 @@ const firebaseConfig = {
         }
 
         /**
-         * Generates a random, short ID for a race.
-         * @returns {string} A 6-character alphanumeric string.
+         * Generates a random, short ID for a race (4 chars, uppercase alpha-numeric).
+         * @returns {string} A 4-character alphanumeric string.
          */
         function generateShortId() {
-            const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            // Using uppercase letters and numbers to avoid confusion (e.g., 'l' vs '1', 'O' vs '0')
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const idLength = 4;
             let result = '';
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < idLength; i++) {
                 result += characters.charAt(Math.floor(Math.random() * characters.length));
             }
             return result;
